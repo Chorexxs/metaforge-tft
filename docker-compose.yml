@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tfthud-postgres
+    environment:
+      POSTGRES_USER: tftuser
+      POSTGRES_PASSWORD: tftpass
+      POSTGRES_DB: tfthud
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tftuser -d tfthud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tfthud-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tfthud-api
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - RIOT_API_KEY=${RIOT_API_KEY}
+      - DATABASE_URL=postgresql+asyncpg://tftuser:tftpass@postgres:5432/tfthud
+      - REDIS_URL=redis://redis:6379/0
+      - TFT_SET_VERSION=14
+      - PATCH_CHECK_INTERVAL_HOURS=6
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./scraper:/app/scraper
+      - ./shared:/app/shared
+
+  scraper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tfthud-scraper
+    command: python -m scraper.scheduler
+    environment:
+      - RIOT_API_KEY=${RIOT_API_KEY}
+      - DATABASE_URL=postgresql+asyncpg://tftuser:tftpass@postgres:5432/tfthud
+      - REDIS_URL=redis://redis:6379/0
+      - TFT_SET_VERSION=14
+      - PATCH_CHECK_INTERVAL_HOURS=6
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./scraper:/app/scraper
+      - ./shared:/app/shared
+
+volumes:
+  postgres_data:
+  redis_data:

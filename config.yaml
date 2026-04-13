@@ -1,0 +1,22 @@
+app:
+  host: "127.0.0.1"
+  port: 8000
+  log_level: "INFO"
+
+database:
+  url: "postgresql+asyncpg://tftuser:tftpass@localhost:5432/tfthud"
+
+redis:
+  url: "redis://localhost:6379/0"
+
+riot:
+  api_key: "${RIOT_API_KEY}"
+  set_version: 14
+
+scraper:
+  patch_check_interval_hours: 6
+  discord_webhook_url: ""
+
+live_client:
+  url: "https://127.0.0.1:2999/liveclientdata/"
+  poll_interval_seconds: 5
