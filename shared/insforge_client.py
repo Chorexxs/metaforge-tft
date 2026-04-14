@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import httpx
@@ -8,8 +9,8 @@ from shared.logger import get_logger
 logger = get_logger(__name__)
 
 INSFORGE_CONFIG = {
-    "url": "https://36b6whsc.eu-central.insforge.app",
-    "api_key": "ik_a6b927fccf5a123ec0a4f0b5b2ccebe9",
+    "url": os.getenv("INSFORGE_URL", "https://36b6whsc.eu-central.insforge.app"),
+    "api_key": os.getenv("INSFORGE_API_KEY", ""),
 }
 
 

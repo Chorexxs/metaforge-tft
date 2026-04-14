@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -65,9 +66,9 @@ async def get_compositions(
     patch: str | None = None,
     tier: str | None = None,
     limit: int = 20,
-) -> dict[str, list]:
+) -> dict[str, Any]:
     if not insforge_client:
-        return {"data": [], "error": "not_initialized"}
+        return {"data": [], "error": "not_initialized", "count": 0}
 
     result = await insforge_client.invoke_function(
         "get-compositions",
@@ -76,13 +77,13 @@ async def get_compositions(
 
     if "error" in result:
         logger.error("get_compositions_failed", error=result.get("error"))
-        return {"data": [], "error": result.get("error")}
+        return {"data": [], "error": result.get("error"), "count": 0}
 
     return {"data": result.get("data", []), "count": len(result.get("data", []))}
 
 
 @app.get("/api/comps/{comp_id}")
-async def get_composition(comp_id: str) -> dict:
+async def get_composition(comp_id: str) -> dict[str, Any]:
     if not insforge_client:
         return {"data": None, "error": "not_initialized"}
 
@@ -98,7 +99,7 @@ async def get_composition(comp_id: str) -> dict:
 
 
 @app.get("/api/patch/current")
-async def get_current_patch() -> dict:
+async def get_current_patch() -> dict[str, Any]:
     if not insforge_client:
         return {"data": None, "error": "not_initialized"}
 
