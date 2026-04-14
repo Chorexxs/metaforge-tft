@@ -260,3 +260,43 @@ async def get_augments(
     ]
 
     return {"data": mock_augments, "count": len(mock_augments)}
+
+
+from backend.riot.live_client import check_game_active, get_current_game_state
+from backend.riot.models import GameState
+
+
+@app.get("/api/game/is-active")
+async def is_game_active() -> dict[str, bool]:
+    active = await check_game_active()
+    return {"active": active}
+
+
+@app.get("/api/game/live-state")
+async def get_live_state() -> dict[str, Any]:
+    state = await get_current_game_state()
+
+    if not state or not state.is_active:
+        return {
+            "active": False,
+            "data": None,
+            "error": "no_active_game",
+        }
+
+    return {
+        "active": True,
+        "data": {
+            "round": state.round,
+            "phase": state.phase,
+            "gold": state.gold,
+            "level": state.level,
+            "xp": state.xp,
+            "hp": state.hp,
+            "max_hp": state.max_hp,
+            "board_count": len(state.board_units),
+            "bench_count": len(state.bench_units),
+            "augments": state.augments,
+            "win_streak": state.win_streak,
+            "lose_streak": state.lose_streak,
+        },
+    }
