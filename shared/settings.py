@@ -14,14 +14,14 @@ class Settings(BaseSettings):
 
     riot__api_key: str = Field(default="", validation_alias="RIOT_API_KEY")
 
-    database__url: str = Field(
-        default="postgresql+asyncpg://tftuser:tftpass@localhost:5432/tfthud",
-        validation_alias="DATABASE_URL",
+    insforge__url: str = Field(
+        default="https://36b6whsc.eu-central.insforge.app",
+        validation_alias="INSFORGE_URL",
     )
 
-    redis__url: str = Field(
-        default="redis://localhost:6379/0",
-        validation_alias="REDIS_URL",
+    insforge__api_key: str = Field(
+        default="",
+        validation_alias="INSFORGE_API_KEY",
     )
 
     tft__set_version: int = Field(default=14, validation_alias="TFT_SET_VERSION")
@@ -36,9 +36,7 @@ class Settings(BaseSettings):
 
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 
-    discord__webhook_url: str | None = Field(
-        default=None, validation_alias="DISCORD_WEBHOOK_URL"
-    )
+    discord__webhook_url: str | None = Field(default=None, validation_alias="DISCORD_WEBHOOK_URL")
 
     live_client__url: str = Field(
         default="https://127.0.0.1:2999/liveclientdata/",
