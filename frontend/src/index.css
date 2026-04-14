@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --hud-accent: #00ffe5;
+  --hud-bg: #0d0d0f;
+  --hud-border: #2a2a35;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: transparent;
+  font-family: "Chakra Petch", sans-serif;
+}
+
+/* Main HUD Container */
+.hud-container {
+  background: linear-gradient(145deg, #0d0d0f 0%, #121216 100%);
+  border: 1px solid #2a2a35;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.8),
+    0 20px 50px rgba(0, 0, 0, 0.6),
+    0 0 100px rgba(0, 255, 229, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* Accent glow border effect */
+.hud-accent-border {
+  position: relative;
+}
+
+.hud-accent-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    #00ffe5 0%,
+    transparent 50%,
+    #00ffe5 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.3;
+}
+
+/* Stats with accent underline */
+.stat-item {
+  position: relative;
+}
+
+.stat-item::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00ffe5, transparent);
+  opacity: 0.3;
+}
+
+/* Card with depth */
+.hud-card {
+  background: linear-gradient(180deg, #151518 0%, #0f0f12 100%);
+  border: 1px solid #2a2a35;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+/* Tier badges with glow */
+.tier-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.tier-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%
+  );
+}
+
+.tier-s {
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+  color: #000;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.tier-a {
+  background: linear-gradient(135deg, #00ffe5 0%, #00b8a3 100%);
+  color: #000;
+}
+
+.tier-b {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #fff;
+}
+
+/* Scan line effect */
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 255, 229, 0.3),
+    transparent
+  );
+  animation: scan-line 4s linear infinite;
+}
+
+/* Item slots */
+.item-slot {
+  background: linear-gradient(145deg, #1c1c21 0%, #151518 100%);
+  border: 1px solid #2a2a35;
+  transition: all 0.2s ease;
+}
+
+.item-slot:hover {
+  border-color: #00ffe5;
+  box-shadow: 0 0 15px rgba(0, 255, 229, 0.2);
+}
+
+/* Text accents */
+.text-accent {
+  color: #00ffe5;
+}
+
+.text-warning {
+  color: #ffb800;
+}
+
+.text-danger {
+  color: #ff3366;
+}
+
+/* Animated corner brackets */
+.corner-bracket {
+  position: relative;
+}
+
+.corner-bracket::before,
+.corner-bracket::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: #00ffe5;
+  border-style: solid;
+  opacity: 0.5;
+}
+
+.corner-bracket::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+
+.corner-bracket::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d0d0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00ffe5, #00b8a3);
+  border-radius: 2px;
+}
+
+/* Number styling for stats */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
