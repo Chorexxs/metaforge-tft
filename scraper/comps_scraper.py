@@ -5,7 +5,6 @@ from typing import Any
 import httpx
 from bs4 import BeautifulSoup
 
-from scraper.database import init_db, save_compositions
 from scraper.validator import validate_composition_data
 from shared.logger import get_logger
 
@@ -28,12 +27,16 @@ def get_random_headers() -> dict[str, str]:
     }
 
 
+async def delay_random() -> None:
+    await asyncio.sleep(random.uniform(2, 5))
+
+
 async def fetch_tactics_comps() -> list[dict[str, Any]]:
     comps: list[dict[str, Any]] = []
 
     try:
         async with httpx.AsyncClient(timeout=30.0, headers=get_random_headers()) as client:
-            await asyncio.sleep(random.uniform(2, 5))
+            await delay_random()
 
             response = await client.get(TACTICS_URL)
             response.raise_for_status()
@@ -78,7 +81,7 @@ async def fetch_metatft_comps() -> list[dict[str, Any]]:
 
     try:
         async with httpx.AsyncClient(timeout=30.0, headers=get_random_headers()) as client:
-            await asyncio.sleep(random.uniform(2, 5))
+            await delay_random()
 
             response = await client.get(METATFT_URL)
             response.raise_for_status()
@@ -145,7 +148,9 @@ def _extract_units(element: BeautifulSoup) -> list[dict[str, Any]]:
     return units
 
 
-def merge_comps(comps_list: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+def merge_comps(
+    comps_list: list[list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
     comp_dict: dict[str, dict[str, Any]] = {}
 
     for comps in comps_list:
@@ -171,25 +176,25 @@ def merge_comps(comps_list: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     return merged
 
 
-async def run_comps_scraper(patch_number: str) -> None:
+async def run_comps_scraper(patch_number: str) -> list[dict[str, Any]]:
     logger.info("comps_scraper_started", patch=patch_number)
-
-    await init_db()
 
     tactics_comps = await fetch_tactics_comps()
     metatft_comps = await fetch_metatft_comps()
 
     merged_comps = merge_comps([tactics_comps, metatft_comps])
 
-    await save_compositions(merged_comps, patch_number)
+    for comp in merged_comps:
+        comp["patch_number"] = patch_number
 
     logger.info("comps_scraper_completed", patch=patch_number, count=len(merged_comps))
+    return merged_comps
 
 
 if __name__ == "__main__":
     import asyncio
-
     from shared.logger import setup_logging
 
     setup_logging()
-    asyncio.run(run_comps_scraper("14.1"))
+    result = asyncio.run(run_comps_scraper("14.1"))
+    print(f"Found {len(result)} compositions")
