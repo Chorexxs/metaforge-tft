@@ -109,3 +109,62 @@ async def get_current_patch() -> dict[str, Any]:
         return {"data": None, "error": result.get("error")}
 
     return {"data": result.get("data")}
+
+
+from backend.engine import (
+    detect_phase,
+    get_action as get_phase_action,
+    recommend_board_units,
+    get_transition_options,
+)
+from backend.engine.item_optimizer import optimize_item_inventory
+
+
+@app.post("/api/game/action")
+async def get_game_action(
+    game_state: dict[str, Any],
+) -> dict[str, Any]:
+    phase = detect_phase(
+        round_=game_state.get("round", "1-1"),
+        level=game_state.get("level", 1),
+    )
+    action = get_phase_action(
+        phase=phase,
+        gold=game_state.get("gold", 0),
+        level=game_state.get("level", 1),
+        round_=game_state.get("round", "1-1"),
+    )
+    return {
+        "phase": phase,
+        "action": action,
+    }
+
+
+@app.post("/api/game/transition")
+async def get_transition(
+    current_units: list[str],
+) -> dict[str, Any]:
+    comps_result = await insforge_client.invoke_function(
+        "get-compositions",
+        {"limit": 10},
+    )
+
+    if "error" in comps_result:
+        return {"options": [], "error": comps_result.get("error")}
+
+    compositions = comps_result.get("data", [])
+    options = get_transition_options(current_units, compositions)
+
+    return {"options": options[:5]}
+
+
+@app.post("/api/items/optimizer")
+async def optimize_items(
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    components = body.get("components", [])
+    target_comp = body.get("target_comp", {})
+
+    result = optimize_item_inventory(components, target_comp)
+
+    return result
