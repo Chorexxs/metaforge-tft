@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from shared.insforge_client import InsForgeClient, get_insforge_client
 from shared.logger import get_logger, setup_logging
@@ -10,7 +12,40 @@ from shared.settings import get_settings
 
 setup_logging()
 logger = get_logger(__name__)
+
+limiter = Limiter(key_func=get_remote_address)
+
 insforge_client: InsForgeClient | None = None
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info("websocket_connected", total=len(self.active_connections))
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        logger.info("websocket_disconnected", total=len(self.active_connections))
+
+    async def send_personal(self, message: dict[str, Any], websocket: WebSocket):
+        try:
+            await websocket.send_json(message)
+        except Exception as e:
+            logger.error("websocket_send_error", error=str(e))
+
+    async def broadcast(self, message: dict[str, Any]):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                pass
+
+
+manager = ConnectionManager()
 
 
 @asynccontextmanager
@@ -37,6 +72,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+state_limiter = limiter.limit("100/minute")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,6 +81,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+async def add_request_id(request: Request):
+    request.state.request_id = f"req_{id(request)}"
+    return request.state.request_id
 
 
 @app.get("/")
@@ -111,6 +153,48 @@ async def get_current_patch() -> dict[str, Any]:
     return {"data": result.get("data")}
 
 
+@app.websocket("/ws/game")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            event_type = data.get("type", "unknown")
+            logger.info("websocket_event", type=event_type, data=data)
+
+            if event_type == "game_state":
+                from backend.engine import detect_phase, get_action as get_phase_action
+
+                game_state = data.get("data", {})
+                phase = detect_phase(
+                    round_=game_state.get("round", "1-1"),
+                    level=game_state.get("level", 1),
+                )
+                action = get_phase_action(
+                    phase=phase,
+                    gold=game_state.get("gold", 0),
+                    level=game_state.get("level", 1),
+                    round_=game_state.get("round", "1-1"),
+                )
+                await manager.send_personal(
+                    {
+                        "type": "recommendation",
+                        "phase": phase,
+                        "action": action,
+                    },
+                    websocket,
+                )
+
+            elif event_type == "ping":
+                await manager.send_personal({"type": "pong"}, websocket)
+
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error("websocket_error", error=str(e))
+        manager.disconnect(websocket)
+
+
 from backend.engine import (
     detect_phase,
     get_action as get_phase_action,
@@ -121,9 +205,7 @@ from backend.engine.item_optimizer import optimize_item_inventory
 
 
 @app.post("/api/game/action")
-async def get_game_action(
-    game_state: dict[str, Any],
-) -> dict[str, Any]:
+async def get_game_action(game_state: dict[str, Any]) -> dict[str, Any]:
     phase = detect_phase(
         round_=game_state.get("round", "1-1"),
         level=game_state.get("level", 1),
@@ -134,16 +216,11 @@ async def get_game_action(
         level=game_state.get("level", 1),
         round_=game_state.get("round", "1-1"),
     )
-    return {
-        "phase": phase,
-        "action": action,
-    }
+    return {"phase": phase, "action": action}
 
 
 @app.post("/api/game/transition")
-async def get_transition(
-    current_units: list[str],
-) -> dict[str, Any]:
+async def get_transition(current_units: list[str]) -> dict[str, Any]:
     comps_result = await insforge_client.invoke_function(
         "get-compositions",
         {"limit": 10},
@@ -159,12 +236,27 @@ async def get_transition(
 
 
 @app.post("/api/items/optimizer")
-async def optimize_items(
-    body: dict[str, Any],
-) -> dict[str, Any]:
+async def optimize_items(body: dict[str, Any]) -> dict[str, Any]:
     components = body.get("components", [])
     target_comp = body.get("target_comp", {})
 
     result = optimize_item_inventory(components, target_comp)
 
     return result
+
+
+@app.get("/api/augments")
+async def get_augments(
+    stage: str | None = None,
+    comp_id: str | None = None,
+) -> dict[str, Any]:
+    if stage not in ["2-1", "3-2", "4-2"]:
+        return {"data": [], "error": "invalid_stage"}
+
+    mock_augments = [
+        {"name": "Jeweled Lotus", "tier": "prismatic"},
+        {"name": "Money Mgr", "tier": "gold"},
+        {"name": "First Strike", "tier": "silver"},
+    ]
+
+    return {"data": mock_augments, "count": len(mock_augments)}
