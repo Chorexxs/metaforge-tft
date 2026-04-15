@@ -5,13 +5,20 @@ import httpx
 from pydantic import BaseModel
 
 from shared.logger import get_logger
+from shared.settings import get_settings
 
 logger = get_logger(__name__)
 
-INSFORGE_CONFIG = {
-    "url": os.getenv("INSFORGE_URL", "https://36b6whsc.eu-central.insforge.app"),
-    "api_key": os.getenv("INSFORGE_API_KEY", ""),
-}
+
+def get_insforge_config():
+    settings = get_settings()
+    return {
+        "url": settings.insforge__url,
+        "api_key": settings.insforge__api_key,
+    }
+
+
+INSFORGE_CONFIG = get_insforge_config()
 
 
 class Composition(BaseModel):

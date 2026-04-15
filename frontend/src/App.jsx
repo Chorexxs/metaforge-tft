@@ -3,7 +3,9 @@ import {
   ITEM_NAMES,
   getChampionImage,
   getItemImage,
-  DD_VERSION,
+  getTraitImage,
+  initializeVersion,
+  getCurrentVersion,
 } from "./data/gameData";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -17,11 +19,14 @@ function App() {
   const [level, setLevel] = useState(1);
   const [round, setRound] = useState("1-1");
   const [hp, setHp] = useState(100);
-  const [patch, setPatch] = useState("14");
+  const [patch, setPatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [gameActive, setGameActive] = useState(false);
 
   useEffect(() => {
+    initializeVersion().then((v) => {
+      setPatch(v);
+    });
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
@@ -29,10 +34,9 @@ function App() {
 
   async function fetchData() {
     try {
-      const [compsRes, gameRes, patchRes] = await Promise.all([
+      const [compsRes, gameRes] = await Promise.all([
         fetch(`${API_URL}/api/comps?limit=1`),
         fetch(`${API_URL}/api/game/live-state`),
-        fetch(`${API_URL}/api/patch/current`),
       ]);
 
       const compsData = await compsRes.json();
@@ -50,11 +54,6 @@ function App() {
         setHp(gameData.data.hp || 100);
       } else {
         setGameActive(false);
-      }
-
-      const patchData = await patchRes.json();
-      if (patchData.data) {
-        setPatch(patchData.data.version || DD_VERSION);
       }
 
       setLoading(false);
@@ -266,19 +265,30 @@ function App() {
               <span style={{ color: "#379CDE" }}>{comp.top4rate}% Top 4</span>
             </div>
             <div className="flex gap-1.5 mt-2">
-              {(comp.traits || []).slice(0, 4).map((trait, i) => (
-                <span
-                  key={i}
-                  className="text-[9px] px-1.5 py-0.5 rounded border"
-                  style={{
-                    backgroundColor: "rgba(255, 182, 13, 0.15)",
-                    color: "rgba(255, 182, 13, 0.9)",
-                    border: "1px solid rgba(255, 182, 13, 0.3)",
-                  }}
-                >
-                  {trait}
-                </span>
-              ))}
+              {(comp.traits || []).slice(0, 4).map((trait, i) => {
+                const traitImg = getTraitImage(trait);
+                return traitImg ? (
+                  <img
+                    key={i}
+                    src={traitImg}
+                    alt={trait}
+                    className="w-5 h-5"
+                    style={{ borderRadius: "3px" }}
+                  />
+                ) : (
+                  <span
+                    key={i}
+                    className="text-[9px] px-1.5 py-0.5 rounded border"
+                    style={{
+                      backgroundColor: "rgba(255, 182, 13, 0.15)",
+                      color: "rgba(255, 182, 13, 0.9)",
+                      border: "1px solid rgba(255, 182, 13, 0.3)",
+                    }}
+                  >
+                    {trait}
+                  </span>
+                );
+              })}
             </div>
             {(comp.champions || []).length > 0 && (
               <div className="flex gap-1 mt-2">
@@ -318,7 +328,7 @@ function App() {
           <div className="flex gap-2">
             {["Rabadons", "HoJ", "BT"].map((itemKey, i) => {
               const itemData = ITEM_NAMES[itemKey];
-              const itemImg = itemData?.id ? getItemImage(itemData.id) : null;
+              const itemImg = getItemImage(itemKey);
               const itemColor = ["#A335EE", "#FFD700", "#C0C0C0"][i];
               return (
                 <div
