@@ -32,11 +32,15 @@ function createWindow() {
     },
   });
 
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
-  } else {
-    mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-  }
+  mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+
+  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDesc) => {
+    console.log("[TFT HUD] Failed to load:", errorCode, errorDesc);
+  });
+
+  mainWindow.webContents.on("did-finish-load", () => {
+    console.log("[TFT HUD] Page loaded successfully");
+  });
 
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
@@ -52,7 +56,6 @@ function toggleVisibility() {
       mainWindow.hide();
     }
   }
-  mainWindow?.webContents.send("visibility-changed", isVisible);
   console.log(`[TFT HUD] Visibility: ${isVisible}`);
 }
 
@@ -65,7 +68,6 @@ function toggleMiniMode() {
       mainWindow.setSize(340, 520);
     }
   }
-  mainWindow?.webContents.send("mini-mode-changed", isMiniMode);
   console.log(`[TFT HUD] Mini mode: ${isMiniMode}`);
 }
 
@@ -85,12 +87,6 @@ app.on("will-quit", () => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
-  }
-});
-
-ipcMain.handle("hide-window", () => {
-  if (mainWindow) {
-    mainWindow.hide();
   }
 });
 

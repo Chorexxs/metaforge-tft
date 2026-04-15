@@ -3,9 +3,12 @@
 @tailwind utilities;
 
 :root {
-  --hud-accent: #00ffe5;
-  --hud-bg: #0d0d0f;
-  --hud-border: #2a2a35;
+  --tft-gold: #ffb60d;
+  --tft-silver: #c0c0c0;
+  --tft-prismatic: #bf5af2;
+  --tft-shadow: #181326;
+  --tft-border: #2a2a45;
+  --tft-text: #ffffff;
 }
 
 * {
@@ -18,15 +21,15 @@ body {
   font-family: "Chakra Petch", sans-serif;
 }
 
-/* Main HUD Container */
+/* Main HUD Container - TFT Style */
 .hud-container {
-  background: linear-gradient(145deg, #0d0d0f 0%, #121216 100%);
-  border: 1px solid #2a2a35;
+  background: linear-gradient(145deg, #1e1e2e 0%, #181326 100%);
+  border: 2px solid #ffb60d;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.8),
     0 20px 50px rgba(0, 0, 0, 0.6),
-    0 0 100px rgba(0, 255, 229, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    0 0 30px rgba(255, 182, 13, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Accent glow border effect */
@@ -42,9 +45,9 @@ body {
   padding: 1px;
   background: linear-gradient(
     135deg,
-    #00ffe5 0%,
+    #ffb60d 0%,
     transparent 50%,
-    #00ffe5 100%
+    #ffb60d 100%
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -54,10 +57,10 @@ body {
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  opacity: 0.3;
+  opacity: 0.4;
 }
 
-/* Stats with accent underline */
+/* Stats with gold underline */
 .stat-item {
   position: relative;
 }
@@ -69,20 +72,20 @@ body {
   left: 0;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #00ffe5, transparent);
-  opacity: 0.3;
+  background: linear-gradient(90deg, transparent, #ffb60d, transparent);
+  opacity: 0.4;
 }
 
-/* Card with depth */
+/* Card with depth - TFT style */
 .hud-card {
-  background: linear-gradient(180deg, #151518 0%, #0f0f12 100%);
-  border: 1px solid #2a2a35;
+  background: linear-gradient(180deg, #252538 0%, #1e1e2e 100%);
+  border: 1px solid #2a2a45;
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-/* Tier badges with glow */
+/* Tier badges - TFT colors */
 .tier-badge {
   position: relative;
   overflow: hidden;
@@ -94,25 +97,29 @@ body {
   inset: 0;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.15) 0%,
     transparent 50%
   );
 }
 
+/* S-Tier: Gold */
 .tier-s {
-  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
-  color: #000;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, #ffd700 0%, #ffb60d 100%);
+  color: #181326;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
 }
 
+/* A-Tier: Silver */
 .tier-a {
-  background: linear-gradient(135deg, #00ffe5 0%, #00b8a3 100%);
-  color: #000;
+  background: linear-gradient(135deg, #e8e8e8 0%, #c0c0c0 100%);
+  color: #181326;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.4);
 }
 
+/* B-Tier: Bronze */
 .tier-b {
-  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
-  color: #fff;
+  background: linear-gradient(135deg, #cd7f32 0%, #8b4513 100%);
+  color: #ffffff;
 }
 
 /* Scan line effect */
@@ -125,35 +132,64 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 255, 229, 0.3),
+    rgba(255, 182, 13, 0.4),
     transparent
   );
   animation: scan-line 4s linear infinite;
 }
 
-/* Item slots */
+/* Item slots - TFT style */
 .item-slot {
-  background: linear-gradient(145deg, #1c1c21 0%, #151518 100%);
-  border: 1px solid #2a2a35;
+  background: linear-gradient(145deg, #252538 0%, #1e1e2e 100%);
+  border: 1px solid #2a2a45;
   transition: all 0.2s ease;
 }
 
 .item-slot:hover {
-  border-color: #00ffe5;
-  box-shadow: 0 0 15px rgba(0, 255, 229, 0.2);
+  border-color: #ffb60d;
+  box-shadow: 0 0 15px rgba(255, 182, 13, 0.3);
 }
 
-/* Text accents */
+/* Text accents - TFT colors */
 .text-accent {
-  color: #00ffe5;
+  color: #ffb60d;
+}
+
+.text-gold {
+  color: #ffb60d;
+}
+
+.text-silver {
+  color: #c0c0c0;
+}
+
+.text-prismatic {
+  color: #bf5af2;
 }
 
 .text-warning {
-  color: #ffb800;
+  color: #ffb60d;
 }
 
 .text-danger {
-  color: #ff3366;
+  color: #ff4444;
+}
+
+/* Cost tier colors */
+.cost-1 {
+  color: #95a4a4;
+}
+.cost-2 {
+  color: #379c37;
+}
+.cost-3 {
+  color: #379cde;
+}
+.cost-4 {
+  color: #a335ee;
+}
+.cost-5 {
+  color: #ffd700;
 }
 
 /* Animated corner brackets */
@@ -167,7 +203,7 @@ body {
   position: absolute;
   width: 8px;
   height: 8px;
-  border-color: #00ffe5;
+  border-color: #ffb60d;
   border-style: solid;
   opacity: 0.5;
 }
@@ -190,11 +226,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0d0d0f;
+  background: #181326;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #00ffe5, #00b8a3);
+  background: linear-gradient(180deg, #ffb60d, #b8860b);
   border-radius: 2px;
 }
 
@@ -202,4 +238,61 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.05em;
+}
+
+/* Champion images */
+.champion-icon {
+  border: 1px solid #2a2a45;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.champion-icon:hover {
+  border-color: #ffb60d;
+  box-shadow: 0 0 10px rgba(255, 182, 13, 0.3);
+}
+
+/* Item images */
+.item-icon {
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.item-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(255, 182, 13, 0.4);
+}
+
+/* Augment tier backgrounds */
+.augment-silver {
+  background: linear-gradient(135deg, #e8e8e8 0%, #a0a0a0 100%);
+  color: #181326;
+  border: 1px solid #c0c0c0;
+}
+
+.augment-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb60d 100%);
+  color: #181326;
+  border: 1px solid #ffb60d;
+}
+
+.augment-prismatic {
+  background: linear-gradient(135deg, #ff00ff 0%, #bf5af2 50%, #00ffff 100%);
+  color: #ffffff;
+  border: 1px solid #bf5af2;
+}
+
+/* Health bar */
+.health-bar {
+  background: linear-gradient(90deg, #50c878 0%, #3cb371 100%);
+}
+
+.health-bar.low {
+  background: linear-gradient(90deg, #ff4444 0%, #cc0000 100%);
+}
+
+/* Gold coin effect */
+.gold-coin {
+  color: #ffd700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }

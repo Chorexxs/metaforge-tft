@@ -9,6 +9,13 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 5173,
+    port: 5174,
+    proxy: {
+      "/ddragon": {
+        target: "https://ddragon.leagueoflegends.com",
+        changeOrigin: true,
+        rewrite: (path) => path.replace("/ddragon", "/cdn/14.8/img"),
+      },
+    },
   },
 });
