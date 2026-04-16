@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from collections.abc import Callable
 
 import httpx
 
@@ -45,20 +45,31 @@ class LiveClient:
 
             board = []
             for u in player_data.get("boardUnits", []):
+                raw_items = u.get("items", [])
+                if isinstance(raw_items, list):
+                    items = [i.get("item_id") if isinstance(i, dict) else str(i) for i in raw_items]
+                else:
+                    items = []
                 unit = Unit(
                     name=u.get("character_name", "Unknown"),
                     level=u.get("tier", 1),
                     tier=u.get("star", 1),
-                    items=[i.get("item_id") for i in u.get("itemNames", [])],
+                    items=items,
                 )
                 board.append(unit)
 
             bench = []
             for u in player_data.get("benchUnits", []):
+                raw_items = u.get("items", [])
+                if isinstance(raw_items, list):
+                    items = [i.get("item_id") if isinstance(i, dict) else str(i) for i in raw_items]
+                else:
+                    items = []
                 unit = Unit(
                     name=u.get("character_name", "Unknown"),
                     level=u.get("tier", 1),
                     tier=u.get("star", 1),
+                    items=items,
                 )
                 bench.append(unit)
 
@@ -92,7 +103,7 @@ class LiveClient:
 
     async def watch(
         self,
-        callback: callable,
+        callback: Callable[..., None],
         stop_event: asyncio.Event | None = None,
     ) -> None:
         logger.info("riot_watch_started")

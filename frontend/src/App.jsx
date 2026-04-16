@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ITEM_NAMES,
   getChampionImage,
@@ -6,9 +6,108 @@ import {
   getTraitImage,
   initializeVersion,
   getCurrentVersion,
+  ITEM_IDS,
 } from "./data/gameData";
 
 const API_URL = "http://127.0.0.1:8000";
+
+const ITEM_ID_MAP = {
+  3072: "BT",
+  1070: "HoJ",
+  3115: "Rabadons",
+  3124: "Guinsoos",
+  3036: "Giant Slayer",
+  3153: "BORK",
+  3035: "LW",
+  3128: "IE",
+  3091: "RFC",
+  3090: "PD",
+  3137: "QS",
+  3026: "GA",
+  3077: "DB",
+  3130: "JH",
+  3179: "ERS",
+  3094: "SFC",
+  3075: "HF",
+  3190: "Aegis",
+  3076: "Bramble",
+  3193: "Gargoyle",
+  3041: "DClaw",
+  3110: "FH",
+  3102: "Banshee",
+  3044: "LDR",
+  3139: "Mercurial",
+  3111: "Warmog",
+  3113: "Spirit",
+  3147: "MZ",
+  3140: "Zephyr",
+  3222: "Spectral",
+  3046: "Titans",
+  3053: "Unholy",
+  3177: "Heart",
+  3142: "Edge",
+  3107: "Contagion",
+};
+
+const AUGMENT_TIERS = {
+  prismatic: "#A335EE",
+  gold: "#FFD700",
+  silver: "#C0C0C0",
+};
+
+const ECON_TARGETS = {
+  "1-1": { target: 0, name: "Start" },
+  "1-2": { target: 0, name: "Carousel" },
+  "1-3": { target: 10, name: "Pre-Krugs" },
+  "1-4": { target: 20, name: "Krugs" },
+  "2-1": { target: 30, name: " Wolves" },
+  "2-2": { target: 40, name: "Raptors" },
+  "2-3": { target: 50, name: "Pre-Level" },
+  "2-4": { target: 50, name: "Level 5" },
+  "2-5": { target: 50, name: "Pre-Red" },
+  "3-1": { target: 50, name: "Red Buff" },
+  "3-2": { target: 40, name: "Augment" },
+  "3-3": { target: 50, name: "Pre-Blue" },
+  "3-4": { target: 50, name: "Level 6" },
+  "4-1": { target: 50, name: "Blue" },
+  "4-2": { target: 30, name: "Augment" },
+  "4-3": { target: 50, name: "Pre-Golem" },
+  "4-4": { target: 50, name: "Level 7" },
+  "5-1": { target: 50, name: "Golem" },
+  "5-2": { target: 50, name: "Pre-Dragon" },
+  "5-3": { target: 50, name: "Dragon" },
+  "5-4": { target: 50, name: "Level 8" },
+  "6-1": { target: 50, name: "Pre-Rift" },
+  "6-2": { target: 50, name: "Rift" },
+  "6-3": { target: 50, name: "Level 9" },
+  "6-4": { target: 50, name: "Final" },
+};
+
+const MOCK_AUGMENTS = {
+  "2-1": [
+    { name: "Money Matters", tier: "gold", desc: "+15 starting gold" },
+    { name: "Tiny Titans", tier: "silver", desc: "Your units gain +50 HP" },
+    { name: "Thrift", tier: "prismatic", desc: "Income boosts last longer" },
+  ],
+  "3-2": [
+    {
+      name: "First Strike",
+      tier: "gold",
+      desc: "Deal 15% more dmg to full HP",
+    },
+    { name: "Treasure Dive", tier: "silver", desc: "Gold nodes are richer" },
+    {
+      name: "High End",
+      tier: "prismatic",
+      desc: "Start with 2 prismatic augments",
+    },
+  ],
+  "4-2": [
+    { name: "Late Game Cash", tier: "gold", desc: "Win streakes give +5 gold" },
+    { name: "Armory", tier: "silver", desc: "Get a free completed item" },
+    { name: "Apex", tier: "prismatic", desc: "Your 5-costs get +25% stats" },
+  ],
+};
 
 function App() {
   const [active, setActive] = useState(true);
@@ -19,18 +118,54 @@ function App() {
   const [level, setLevel] = useState(1);
   const [round, setRound] = useState("1-1");
   const [hp, setHp] = useState(100);
+  const [maxHp, setMaxHp] = useState(100);
   const [patch, setPatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [gameActive, setGameActive] = useState(false);
+  const [boardUnits, setBoardUnits] = useState([]);
+  const [benchUnits, setBenchUnits] = useState([]);
+  const [augments, setAugments] = useState([]);
+  const [winStreak, setWinStreak] = useState(0);
+  const [loseStreak, setLoseStreak] = useState(0);
+  const wsRef = useRef(null);
 
   useEffect(() => {
     initializeVersion().then((v) => {
       setPatch(v);
     });
+    connectWebSocket();
     fetchData();
     const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, []);
+
+  function connectWebSocket() {
+    try {
+      const ws = new WebSocket("ws://127.0.0.1:8000/ws/game");
+      ws.onopen = () => {
+        console.log("[TFT HUD] WebSocket connected");
+      };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "recommendation") {
+            setPhase(data.phase);
+          }
+        } catch (e) {}
+      };
+      ws.onclose = () => {
+        console.log("[TFT HUD] WebSocket disconnected");
+      };
+      wsRef.current = ws;
+    } catch (e) {
+      console.log("[TFT HUD] WebSocket connection failed");
+    }
+  }
 
   async function fetchData() {
     try {
@@ -52,6 +187,21 @@ function App() {
         setPhase(gameData.data.phase || "early");
         setRound(gameData.data.round || "1-1");
         setHp(gameData.data.hp || 100);
+        setMaxHp(gameData.data.max_hp || 100);
+        setBoardUnits(gameData.data.board_units || []);
+        setBenchUnits(gameData.data.bench_units || []);
+        setAugments(gameData.data.augments || []);
+        setWinStreak(gameData.data.win_streak || 0);
+        setLoseStreak(gameData.data.lose_streak || 0);
+
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "game_state",
+              data: gameData.data,
+            }),
+          );
+        }
       } else {
         setGameActive(false);
       }
@@ -60,6 +210,29 @@ function App() {
     } catch (e) {
       setLoading(false);
     }
+  }
+
+  function getItemKeyFromId(itemId) {
+    if (!itemId) return null;
+    const id = typeof itemId === "string" ? parseInt(itemId, 10) : itemId;
+    return ITEM_ID_MAP[id] || null;
+  }
+
+  function getEconStatus() {
+    const roundData = ECON_TARGETS[round];
+    if (!roundData) return { progress: 0, status: "neutral" };
+
+    const target = roundData.target;
+    const current = gold;
+
+    if (target === 0) return { progress: 100, status: "neutral" };
+
+    const progress = Math.min(100, (current / target) * 100);
+    let status = "neutral";
+    if (current >= target + 10) status = "surplus";
+    else if (current < target - 10) status = "deficit";
+
+    return { progress, status, target, current };
   }
 
   if (!active) return null;
@@ -71,7 +244,7 @@ function App() {
       className="font-game rounded-xl overflow-hidden"
       style={{
         width,
-        height: miniMode ? 180 : 520,
+        height: miniMode ? 180 : 680,
         backgroundColor: "#181326",
         border: "2px solid #FFB60D",
         boxShadow:
@@ -122,7 +295,7 @@ function App() {
         </div>
       </div>
 
-      {/* Stats Bar */}
+      {/* Stats Bar with EconMeter */}
       <div
         className="flex items-center justify-between px-4 py-2 text-[11px]"
         style={{
@@ -173,6 +346,70 @@ function App() {
           </span>
         </div>
       </div>
+
+      {/* EconMeter */}
+      {!miniMode && gameActive && (
+        <div
+          className="px-4 py-2"
+          style={{ borderTop: "1px solid rgba(255, 182, 13, 0.1)" }}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span
+              className="text-[9px] uppercase tracking-wide"
+              style={{ color: "rgba(255, 182, 13, 0.5)" }}
+            >
+              Econ Target
+            </span>
+            <span
+              className="text-[9px]"
+              style={{ color: "rgba(255, 255, 255, 0.6)" }}
+            >
+              {gold}/{ECON_TARGETS[round]?.target || 50}
+            </span>
+          </div>
+          <div
+            className="h-1.5 rounded-full overflow-hidden"
+            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (gold / (ECON_TARGETS[round]?.target || 50)) * 100)}%`,
+                backgroundColor:
+                  gold >= (ECON_TARGETS[round]?.target || 50)
+                    ? "#50C878"
+                    : "#379CDE",
+                boxShadow:
+                  gold >= (ECON_TARGETS[round]?.target || 50)
+                    ? "0 0 8px #50C878"
+                    : "none",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Streaks */}
+      {!miniMode && gameActive && (winStreak > 0 || loseStreak > 0) && (
+        <div className="px-4 py-2 flex items-center gap-4 text-[10px]">
+          {winStreak > 0 && (
+            <div className="flex items-center gap-1">
+              <span style={{ color: "rgba(255, 182, 13, 0.5)" }}>Win:</span>
+              <span className="font-bold" style={{ color: "#FFD700" }}>
+                {winStreak}
+              </span>
+            </div>
+          )}
+          {loseStreak > 0 && (
+            <div className="flex items-center gap-1">
+              <span style={{ color: "rgba(255, 182, 13, 0.5)" }}>Lose:</span>
+              <span className="font-bold" style={{ color: "#FF4444" }}>
+                {loseStreak}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Phase Guide */}
       {!miniMode && (
@@ -309,6 +546,107 @@ function App() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Augment Advisor */}
+      {!miniMode && gameActive && (
+        <div
+          className="px-4 py-3"
+          style={{ borderTop: "1px solid rgba(255, 182, 13, 0.15)" }}
+        >
+          <div
+            className="text-[9px] uppercase tracking-[0.2em] mb-2"
+            style={{ color: "rgba(255, 182, 13, 0.6)" }}
+          >
+            Augment Advisor
+          </div>
+          <div className="space-y-1.5">
+            {(MOCK_AUGMENTS[round] || MOCK_AUGMENTS["3-2"])
+              .slice(0, 3)
+              .map((aug, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-2 py-1 rounded"
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.03)",
+                    borderLeft: `3px solid ${AUGMENT_TIERS[aug.tier] || "#C0C0C0"}`,
+                  }}
+                >
+                  <span
+                    className="text-[10px] font-medium"
+                    style={{ color: "#FFFFFF" }}
+                  >
+                    {aug.name}
+                  </span>
+                  <span
+                    className="text-[8px] uppercase px-1.5 py-0.5 rounded"
+                    style={{
+                      backgroundColor: AUGMENT_TIERS[aug.tier] + "20",
+                      color: AUGMENT_TIERS[aug.tier] || "#C0C0C0",
+                    }}
+                  >
+                    {aug.tier}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Board Units Preview */}
+      {!miniMode && gameActive && boardUnits.length > 0 && (
+        <div
+          className="px-4 py-3"
+          style={{ borderTop: "1px solid rgba(255, 182, 13, 0.15)" }}
+        >
+          <div
+            className="text-[9px] uppercase tracking-[0.2em] mb-2"
+            style={{ color: "rgba(255, 182, 13, 0.6)" }}
+          >
+            Your Units
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {boardUnits.slice(0, 8).map((unit, i) => {
+              const champImg = getChampionImage(unit.name);
+              const unitItems = (unit.items || []).slice(0, 3);
+              return (
+                <div key={i} className="relative group">
+                  <img
+                    src={champImg}
+                    alt={unit.name}
+                    className="w-8 h-8 rounded"
+                    style={{
+                      border: `2px solid ${unit.tier === 3 ? "#FFD700" : unit.tier === 2 ? "#C0C0C0" : "#2A2A45"}`,
+                    }}
+                  />
+                  {unit.tier > 1 && (
+                    <div
+                      className="absolute -top-1 -right-1 w-3 h-3 flex items-center justify-center rounded-full text-[6px] font-bold"
+                      style={{ backgroundColor: "#FFD700", color: "#181326" }}
+                    >
+                      {unit.tier}
+                    </div>
+                  )}
+                  {unitItems.length > 0 && (
+                    <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                      {unitItems.map((itemId, j) => {
+                        const itemKey = getItemKeyFromId(itemId);
+                        return itemKey ? (
+                          <img
+                            key={j}
+                            src={getItemImage(itemKey)}
+                            alt=""
+                            className="w-3 h-3 rounded-sm"
+                          />
+                        ) : null;
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

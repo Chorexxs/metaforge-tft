@@ -293,8 +293,22 @@ async def get_live_state() -> dict[str, Any]:
             "xp": state.xp,
             "hp": state.hp,
             "max_hp": state.max_hp,
-            "board_count": len(state.board_units),
-            "bench_count": len(state.bench_units),
+            "board_units": [
+                {
+                    "name": u.name,
+                    "tier": u.tier,
+                    "items": u.items,
+                }
+                for u in state.board_units
+            ],
+            "bench_units": [
+                {
+                    "name": u.name,
+                    "tier": u.tier,
+                    "items": u.items,
+                }
+                for u in state.bench_units
+            ],
             "augments": state.augments,
             "win_streak": state.win_streak,
             "lose_streak": state.lose_streak,

@@ -6,7 +6,7 @@ class Unit(BaseModel):
     name: str
     level: int = 1
     tier: int = 1
-    items: list[str] = []
+    items: list[Any] = []
 
 
 class GameState(BaseModel):
@@ -24,7 +24,7 @@ class GameState(BaseModel):
     board_units: list[Unit] = []
     bench_units: list[Unit] = []
 
-    bench_items: list[str] = []
+    bench_items: list[Any] = []
 
     augments: list[str] = []
 
