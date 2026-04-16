@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import httpx
@@ -16,9 +15,6 @@ def get_insforge_config():
         "url": settings.insforge__url,
         "api_key": settings.insforge__api_key,
     }
-
-
-INSFORGE_CONFIG = get_insforge_config()
 
 
 class Composition(BaseModel):
@@ -42,18 +38,33 @@ class PatchVersion(BaseModel):
     ingestion_status: str = "pending"
 
 
+def get_api_key() -> str:
+    settings = get_settings()
+    api_key = settings.insforge__api_key
+    if not api_key:
+        logger.warning("insforge_api_key_empty")
+    return api_key
+
+
+def get_base_url() -> str:
+    settings = get_settings()
+    return settings.insforge__url
+
+
 class InsForgeClient:
     def __init__(self, base_url: str | None = None, api_key: str | None = None):
-        self.base_url = base_url or INSFORGE_CONFIG["url"]
-        self.api_key = api_key or INSFORGE_CONFIG["api_key"]
+        self.base_url = base_url or get_base_url()
+        self.api_key = api_key or get_api_key()
         self.functions_url = f"{self.base_url}/functions"
         self._client = httpx.AsyncClient(
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
             timeout=30.0,
         )
+
+    def _get_headers(self) -> dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -65,11 +76,16 @@ class InsForgeClient:
         method: str = "POST",
     ) -> dict[str, Any]:
         url = f"{self.functions_url}/{slug}"
+        headers = self._get_headers()
+
+        if not self.api_key:
+            logger.error("insforge_api_key_missing", slug=slug)
+            return {"error": "API key not configured"}
 
         if method == "GET":
-            response = await self._client.get(url)
+            response = await self._client.get(url, headers=headers)
         else:
-            response = await self._client.post(url, json=data or {})
+            response = await self._client.post(url, headers=headers, json=data or {})
 
         if response.status_code >= 400:
             logger.error(

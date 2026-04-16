@@ -1,4 +1,5 @@
 import asyncio
+import time
 from collections.abc import Callable
 
 import httpx
@@ -16,25 +17,28 @@ POLL_INTERVAL = settings.live_client__poll_interval_seconds
 
 class LiveClient:
     def __init__(self):
-        self._client = httpx.AsyncClient(
+        self._client = httpx.Client(
             verify=False,
-            timeout=10.0,
+            timeout=5.0,
         )
         self._last_state: GameState | None = None
 
-    async def close(self) -> None:
-        await self._client.aclose()
+    def close(self) -> None:
+        self._client.close()
 
-    async def is_active(self) -> bool:
+    def is_active(self) -> bool:
         try:
-            response = await self._client.get(f"{LIVE_CLIENT_URL}allgamedata")
+            logger.debug("riot_api_check", url=f"{LIVE_CLIENT_URL}allgamedata")
+            response = self._client.get(f"{LIVE_CLIENT_URL}allgamedata")
+            logger.debug("riot_api_response", status=response.status_code)
             return response.status_code == 200
-        except Exception:
+        except Exception as e:
+            logger.warning("riot_api_error", error=str(e))
             return False
 
-    async def fetch_state(self) -> GameState | None:
+    def fetch_state(self) -> GameState | None:
         try:
-            response = await self._client.get(f"{LIVE_CLIENT_URL}allgamedata")
+            response = self._client.get(f"{LIVE_CLIENT_URL}allgamedata")
             if response.status_code != 200:
                 return GameState(is_active=False)
 
@@ -101,7 +105,7 @@ class LiveClient:
             logger.error("riot_fetch_error", error=str(e))
             return GameState(is_active=False)
 
-    async def watch(
+    def watch(
         self,
         callback: Callable[..., None],
         stop_event: asyncio.Event | None = None,
@@ -112,31 +116,31 @@ class LiveClient:
             if stop_event and stop_event.is_set():
                 break
 
-            state = await self.fetch_state()
-            await callback(state)
+            state = self.fetch_state()
+            callback(state)
 
-            await asyncio.sleep(POLL_INTERVAL)
+            time.sleep(POLL_INTERVAL)
 
     def get_last_state(self) -> GameState | None:
         return self._last_state
 
 
-async def get_live_client() -> LiveClient:
+def get_live_client() -> LiveClient:
     return LiveClient()
 
 
-async def check_game_active() -> bool:
-    client = await get_live_client()
+def check_game_active() -> bool:
+    client = get_live_client()
     try:
-        active = await client.is_active()
+        active = client.is_active()
         return active
     finally:
-        await client.close()
+        client.close()
 
 
-async def get_current_game_state() -> GameState | None:
-    client = await get_live_client()
+def get_current_game_state() -> GameState | None:
+    client = get_live_client()
     try:
-        return await client.fetch_state()
+        return client.fetch_state()
     finally:
-        await client.close()
+        client.close()

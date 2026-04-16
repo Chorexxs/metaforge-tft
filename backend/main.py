@@ -163,7 +163,8 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.info("websocket_event", type=event_type, data=data)
 
             if event_type == "game_state":
-                from backend.engine import detect_phase, get_action as get_phase_action
+                from backend.engine import detect_phase
+                from backend.engine import get_action as get_phase_action
 
                 game_state = data.get("data", {})
                 phase = detect_phase(
@@ -197,9 +198,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
 from backend.engine import (
     detect_phase,
-    get_action as get_phase_action,
-    recommend_board_units,
     get_transition_options,
+)
+from backend.engine import (
+    get_action as get_phase_action,
 )
 from backend.engine.item_optimizer import optimize_item_inventory
 
@@ -263,18 +265,17 @@ async def get_augments(
 
 
 from backend.riot.live_client import check_game_active, get_current_game_state
-from backend.riot.models import GameState
 
 
 @app.get("/api/game/is-active")
 async def is_game_active() -> dict[str, bool]:
-    active = await check_game_active()
+    active = check_game_active()
     return {"active": active}
 
 
 @app.get("/api/game/live-state")
 async def get_live_state() -> dict[str, Any]:
-    state = await get_current_game_state()
+    state = get_current_game_state()
 
     if not state or not state.is_active:
         return {
