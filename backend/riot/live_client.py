@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import httpx
 
+from backend.ocr.screen_reader import get_screen_reader
 from backend.riot.models import GameState, Unit
 from shared.logger import get_logger
 from shared.settings import get_settings
@@ -13,6 +14,18 @@ settings = get_settings()
 
 LIVE_CLIENT_URL = settings.live_client__url
 POLL_INTERVAL = settings.live_client__poll_interval_seconds
+
+_ocr_reader = None
+
+
+def _get_ocr_reader():
+    global _ocr_reader
+    if _ocr_reader is None:
+        try:
+            _ocr_reader = get_screen_reader()
+        except Exception as e:
+            logger.warning("ocr_init_failed", error=str(e))
+    return _ocr_reader
 
 
 class LiveClient:
@@ -37,6 +50,21 @@ class LiveClient:
             return False
 
     def fetch_state(self) -> GameState | None:
+        ocr_gold = 0
+        ocr_hp = 100
+        ocr_level = 1
+
+        try:
+            ocr_reader = _get_ocr_reader()
+            if ocr_reader:
+                ocr_stats = ocr_reader.get_game_stats()
+                ocr_gold = ocr_stats.get("gold", 0)
+                ocr_hp = ocr_stats.get("hp", 100)
+                ocr_level = ocr_stats.get("level", 1)
+                logger.debug("ocr_stats", gold=ocr_gold, hp=ocr_hp, level=ocr_level)
+        except Exception as e:
+            logger.debug("ocr_fetch_skipped", error=str(e))
+
         try:
             response = self._client.get(f"{LIVE_CLIENT_URL}allgamedata")
             if response.status_code != 200:
@@ -46,6 +74,7 @@ class LiveClient:
 
             game_data = data.get("gameData", {})
             player_data = game_data.get("player", {})
+            active_player = data.get("activePlayer", {})
 
             board = []
             for u in player_data.get("boardUnits", []):
@@ -77,14 +106,18 @@ class LiveClient:
                 )
                 bench.append(unit)
 
+            api_level = active_player.get("level", ocr_level) if active_player else ocr_level
+            if api_level == 1 and ocr_level > 1:
+                api_level = ocr_level
+
             state = GameState(
                 round=game_data.get("round", "1-1"),
                 phase=game_data.get("phase", "planning"),
                 stage=game_data.get("stage", 1),
-                gold=player_data.get("gold", 0),
-                level=player_data.get("level", 1),
+                gold=ocr_gold if ocr_gold > 0 else player_data.get("gold", 0),
+                level=api_level,
                 xp=player_data.get("xp", 0),
-                hp=player_data.get("hp", 100),
+                hp=ocr_hp if ocr_hp > 0 else player_data.get("hp", 100),
                 max_hp=player_data.get("max_hp", 100),
                 board_units=board,
                 bench_units=bench,
